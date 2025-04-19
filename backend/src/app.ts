@@ -1,0 +1,40 @@
+import express, { Request, Response } from 'express';
+
+// import API routes here
+import userRoutes from './routes/user.routes';
+
+
+import requestLogger from './middlewares/requestLogger';
+import { unknownEndpoint, errorHandler } from './middlewares/errorHandler';
+import FriendshipRoutes from './routes/friendship.routes';
+import ChatRoutes from './routes/chat.routes';
+
+const app = express();
+
+// Middleware to parse JSON
+app.use(express.json());
+
+// Request logger middleware
+app.use(requestLogger);
+
+// Basic route
+app.get('/', (req: Request, res: Response) => {
+  res.json({ message: 'Hello from TypeScript backend!' });
+});
+
+// User routes
+app.use('/user', userRoutes);
+
+// Friendship routes
+app.use('/friendship', FriendshipRoutes);
+
+// Chat routes
+app.use('/chat', ChatRoutes);
+
+// Handle unknown endpoints
+app.use(unknownEndpoint);
+
+// Error-handling middleware
+app.use(errorHandler);
+
+export default app;
