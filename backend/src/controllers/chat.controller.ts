@@ -102,3 +102,26 @@ export const deleteChatMessage = asyncHandler(async (req: Request, res: Response
 
   res.status(200).json({ message: 'Message deleted successfully' });
 });
+
+// Fetch all chat relationships for a user
+export const getUserChats = asyncHandler(async (req: Request, res: Response) => {
+  const { userId } = req.query;
+
+  // Validate input
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' });
+  }
+
+  // Fetch all chats where the user is either userA or userB
+  const chats = await prisma.chat.findMany({
+    where: {
+      OR: [{ userAId: userId as string }, { userBId: userId as string }],
+    },
+    include: {
+      userA: { select: { id: true, username: true } },
+      userB: { select: { id: true, username: true } },
+    },
+  });
+
+  res.status(200).json({ chats });
+});

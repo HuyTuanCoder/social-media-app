@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import cors from 'cors';
 
 // import API routes here
 import userRoutes from './routes/user.routes';
@@ -10,6 +11,8 @@ import FriendshipRoutes from './routes/friendship.routes';
 import ChatRoutes from './routes/chat.routes';
 
 const app = express();
+
+app.use(cors());
 
 // Middleware to parse JSON
 app.use(express.json());

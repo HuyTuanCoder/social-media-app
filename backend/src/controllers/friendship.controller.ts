@@ -48,3 +48,57 @@ export const deleteFriendship = asyncHandler(async (req: Request, res: Response)
 
   res.status(200).json({ message: 'Friendship deleted successfully' });
 });
+
+export const searchFriends = asyncHandler(async (req: Request, res: Response) => {
+  const { userId, pattern } = req.body; // Extract the current user's ID and search pattern from the request body
+
+  // Validate input
+  if (!userId || typeof userId !== 'string') {
+    return res.status(400).json({ error: 'A valid userId is required' });
+  }
+  if (!pattern || typeof pattern !== 'string') {
+    return res.status(400).json({ error: 'A valid search pattern is required' });
+  }
+
+  // Find friends of the current user
+  const friends = await prisma.friendship.findMany({
+    where: {
+      OR: [
+        { userAId: userId }, // Friends where the current user is userA
+        { userBId: userId }, // Friends where the current user is userB
+      ],
+    },
+    // Using include here to fetch related data from the userId
+    include: {
+      userA: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+        },
+      },
+      userB: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  // Filter friends based on the search pattern
+  const filteredFriends = friends
+    .map((friendship) =>
+      friendship.userAId === userId
+        ? friendship.userB // If the current user is userA, return userB
+        : friendship.userA // If the current user is userB, return userA
+    )
+    .filter(
+      (friend) =>
+        friend.username.toLowerCase().includes(pattern.toLowerCase()) ||
+        friend.email.toLowerCase().includes(pattern.toLowerCase())
+    );
+
+  res.json(filteredFriends);
+});
