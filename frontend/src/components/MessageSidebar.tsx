@@ -4,7 +4,7 @@ import { Chat, Message } from '../types/types';
 
 interface MessageSidebarProps {
   userId: string; // Current logged-in user's ID
-  onSelectChat: (chatId: string, messages: Message[]) => void; // Callback to handle chat selection
+  onSelectChat: (chatId: string, messages: Message[], otherUser: User) => void; // Callback to handle chat selection
 }
 
 const MessageSidebar: React.FC<MessageSidebarProps> = ({ userId, onSelectChat }) => {
@@ -12,17 +12,14 @@ const MessageSidebar: React.FC<MessageSidebarProps> = ({ userId, onSelectChat })
   const [chats, setChats] = useState<Chat[]>([]); // State for chat relationships
   const [messagesCache, setMessagesCache] = useState<Record<string, Message[]>>({}); // Cache for messages
   const [searchResults, setSearchResults] = useState<Chat[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null); // Track the active chat ID
 
-  /*
-  This function grab all of the person THIS USER has a Chat relationship with (usually already chatting)
-  The output of the function is an array of chat with createdAt, chatId, userA, userB with their id and username
-  */
   useEffect(() => {
     const fetchChats = async () => {
       try {
         const response = await messageService.getUserChats(userId);
 
-        //console.log(response);
+        console.log(response);
 
         setChats(response.chats);
         setSearchResults(response.chats); // Initialize search results
@@ -34,7 +31,6 @@ const MessageSidebar: React.FC<MessageSidebarProps> = ({ userId, onSelectChat })
     fetchChats();
   }, [userId]);
 
-  // Handle search input change
   const handleSearch = (query: string) => {
     setSearchQuery(query);
 
@@ -46,19 +42,21 @@ const MessageSidebar: React.FC<MessageSidebarProps> = ({ userId, onSelectChat })
     setSearchResults(results);
   };
 
-  // Handle selecting a chat
   const handleSelectChat = async (chat: Chat) => {
     const otherUser = chat.userA.id === userId ? chat.userB : chat.userA;
 
+    // Set the active chat ID
+    setActiveChatId(chat.id);
+
     // Check if messages are already cached
     if (messagesCache[chat.id]) {
-      onSelectChat(chat.id, messagesCache[chat.id]);
+      onSelectChat(chat.id, messagesCache[chat.id], otherUser);
     } else {
       try {
         const response = await messageService.getChatMessages(userId, otherUser.id);
         const messages = response.chat.messages;
         setMessagesCache((prevCache) => ({ ...prevCache, [chat.id]: messages })); // Cache messages
-        onSelectChat(chat.id, messages);
+        onSelectChat(chat.id, messages, otherUser);
       } catch (error) {
         console.error('Error fetching messages:', error);
       }
@@ -86,7 +84,9 @@ const MessageSidebar: React.FC<MessageSidebarProps> = ({ userId, onSelectChat })
             return (
               <li
                 key={chat.id}
-                className="p-3 mb-2 bg-white rounded-lg shadow flex justify-between items-center cursor-pointer"
+                className={`p-3 mb-2 rounded-lg shadow flex justify-between items-center cursor-pointer ${
+                  activeChatId === chat.id ? 'bg-blue-200' : 'bg-white hover:bg-gray-200'
+                }`}
                 onClick={() => handleSelectChat(chat)}
               >
                 <span>{otherUser.username}</span>
@@ -104,7 +104,9 @@ const MessageSidebar: React.FC<MessageSidebarProps> = ({ userId, onSelectChat })
           return (
             <li
               key={chat.id}
-              className="p-3 mb-2 bg-white rounded-lg shadow hover:bg-gray-200 cursor-pointer"
+              className={`p-3 mb-2 rounded-lg shadow cursor-pointer ${
+                activeChatId === chat.id ? 'bg-blue-200' : 'bg-white hover:bg-gray-200'
+              }`}
               onClick={() => handleSelectChat(chat)}
             >
               {otherUser.username}

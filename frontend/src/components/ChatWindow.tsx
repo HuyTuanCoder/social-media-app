@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Message, User } from '../types/types';
 import messageService from '../services/messageService';
 
@@ -6,12 +6,20 @@ interface ChatWindowProps {
   chatId: string | null;
   messages: Message[] | null;
   currentUser: User | null;
-  otherUser?: User | null; // Add the other user's information
-  onNewMessage: (newMessage: Message) => void; // Callback to update messages in parent
+  otherUser?: User | null;
+  onNewMessage: (newMessage: Message) => void;
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ chatId, messages, currentUser, otherUser, onNewMessage }) => {
-  const [newMessage, setNewMessage] = useState(''); // State for the new message input
+  const [newMessage, setNewMessage] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages update
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   if (!chatId || !messages) {
     return (
@@ -26,8 +34,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ chatId, messages, currentUser, 
 
     try {
       const response = await messageService.sendMessage(currentUser.id, otherUser.id, newMessage);
-      onNewMessage(response); // Update messages in the parent component
-      setNewMessage(''); // Clear the input field
+      
+      // Extract the actual message data from the response
+      // This assumes the response structure matches what we see in Image 3
+      const messageData = response.messageDetails;
+      
+      // Create a properly formatted Message object from the response
+      const formattedMessage: Message = {
+        id: messageData.id,
+        chatId: messageData.chatId,
+        senderId: messageData.senderId,
+        text: messageData.text,
+        createdAt: messageData.createdAt
+      };
+
+      // Update the parent component with the new message
+      onNewMessage(formattedMessage);
+
+      // Clear the input field
+      setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
     }
@@ -48,7 +73,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ chatId, messages, currentUser, 
       <div className="flex-1 overflow-y-auto space-y-4">
         {messages.map((message) => (
           <div
-            key={message.id}
+            key={`message-${message.id}`} // Ensure each message has a unique key with a prefix
             className={`flex ${
               message.senderId === currentUser?.id ? 'justify-end' : 'justify-start'
             }`}
@@ -64,6 +89,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ chatId, messages, currentUser, 
             </div>
           </div>
         ))}
+        <div ref={messagesEndRef} /> {/* Reference for auto-scrolling */}
       </div>
 
       {/* Send Message Section */}

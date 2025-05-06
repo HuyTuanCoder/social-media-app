@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
@@ -8,46 +9,61 @@ import ChatWindow from './components/ChatWindow';
 import Friends from './components/Friends';
 import Profile from './components/Profile';
 import Report from './components/Report';
-import { User, Message } from './types/types'; // Import User and Message types
+import { User, Message } from './types/types';
 
 const App = (): JSX.Element => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login state
-  const [currentUser, setCurrentUser] = useState<User | null>(null); // Store the logged-in user's data
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null); // Track the selected chat
-  const [messages, setMessages] = useState<Message[] | null>(null); // Store messages for the selected chat
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [otherUser, setOtherUser] = useState<User | null>(null);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[] | null>(null);
 
   useEffect(() => {
     const loggedUserJSON = window.localStorage.getItem('loggedUser');
     if (loggedUserJSON) {
       const user = JSON.parse(loggedUserJSON);
-      setCurrentUser(user); // Set the current user
-      setIsLoggedIn(true); // Set login state to true
+      setCurrentUser(user);
+      setIsLoggedIn(true);
     }
   }, []);
 
   const handleLogin = (user: User) => {
-    setCurrentUser(user); // Set the logged-in user's data
-    setIsLoggedIn(true); // Set login state to true
-    window.localStorage.setItem('loggedUser', JSON.stringify(user)); // Store user in localStorage
+    setCurrentUser(user);
+    setIsLoggedIn(true);
+    window.localStorage.setItem('loggedUser', JSON.stringify(user));
   };
 
   const handleSignUp = (user: User) => {
-    setCurrentUser(user); // Set the newly signed-up user's data
-    setIsLoggedIn(true); // Set login state to true
-    window.localStorage.setItem('loggedUser', JSON.stringify(user)); // Store user in localStorage
+    setCurrentUser(user);
+    setIsLoggedIn(true);
+    window.localStorage.setItem('loggedUser', JSON.stringify(user));
   };
 
   const handleLogout = () => {
-    setCurrentUser(null); // Clear the current user
-    setIsLoggedIn(false); // Reset the login state
-    window.localStorage.removeItem('loggedUser'); // Remove user from localStorage
-    setSelectedChatId(null); // Reset selected chat
-    setMessages(null); // Reset messages
+    setCurrentUser(null);
+    setIsLoggedIn(false);
+    window.localStorage.removeItem('loggedUser');
+    setSelectedChatId(null);
+    setMessages(null);
   };
 
-  const handleSelectChat = (chatId: string, chatMessages: Message[]) => {
-    setSelectedChatId(chatId); // Set the selected chat ID
-    setMessages(chatMessages); // Set the messages for the selected chat
+  const handleSelectChat = (chatId: string, chatMessages: Message[], otherUser: User) => {
+    setOtherUser(otherUser);
+    setSelectedChatId(chatId);
+    setMessages(chatMessages);
+  };
+
+  const handleNewMessage = (newMessage: Message) => {
+    // Check if the new message belongs to the current chat
+    if (newMessage.chatId === selectedChatId) {
+      setMessages((prevMessages) => {
+        // Make sure we don't add duplicate messages
+        if (prevMessages && !prevMessages.some(msg => msg.id === newMessage.id)) {
+          return [...prevMessages, newMessage];
+        }
+        return prevMessages;
+      });
+    }
   };
 
   return (
@@ -65,7 +81,6 @@ const App = (): JSX.Element => {
                 path="/messages"
                 element={
                   <div className="flex h-screen">
-                    {/* Pass currentUser.id to MessageSidebar */}
                     <MessageSidebar
                       userId={currentUser?.id || ''}
                       onSelectChat={handleSelectChat}
@@ -74,6 +89,8 @@ const App = (): JSX.Element => {
                       chatId={selectedChatId}
                       messages={messages}
                       currentUser={currentUser}
+                      onNewMessage={handleNewMessage}
+                      otherUser={otherUser}
                     />
                   </div>
                 }
