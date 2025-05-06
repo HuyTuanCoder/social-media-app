@@ -1,21 +1,48 @@
 import React, { useState } from 'react';
+import userService from '../services/userService';
+import { User } from '../types/types';
 
-const Profile = (): JSX.Element => {
-  const [user, setUser] = useState({ name: 'User A', email: 'A@gmail.com' });
+interface ProfileProps {
+  user: User; // User object passed from App.tsx
+  onUserDeleted: () => void; // Callback to handle user deletion
+}
 
-  const handleUpdate = () => {
+const Profile: React.FC<ProfileProps> = ({ user, onUserDeleted }) => {
+  const [username, setUsername] = useState(user.username);
+  const [email, setEmail] = useState(user.email);
+
+  const handleUpdate = async () => {
     if (window.confirm('Are you sure you want to update your profile?')) {
-      // Simulate update logic
-      console.log('Profile updated!');
-      alert('Your profile has been updated.');
+      try {
+        // Update username and email via API
+        const updates: { username?: string; email?: string } = {};
+        if (username !== user.username) updates.username = username;
+        if (email !== user.email) updates.email = email;
+
+        if (Object.keys(updates).length > 0) {
+          await userService.updateUser(user.id, updates); // Matches `/update/:id`
+          alert('Your profile has been updated.');
+        } else {
+          alert('No changes were made.');
+        }
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        alert('Failed to update profile. Please try again.');
+      }
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete your profile? This action cannot be undone.')) {
-      // Simulate delete logic
-      console.log('Profile deleted!');
-      alert('Your profile has been deleted.');
+      try {
+        // Delete user via API
+        await userService.deleteUser(user.id); // Matches `/delete/:id`
+        alert('Your profile has been deleted.');
+        onUserDeleted(); // Notify parent component about user deletion
+      } catch (error) {
+        console.error('Error deleting profile:', error);
+        alert('Failed to delete profile. Please try again.');
+      }
     }
   };
 
@@ -24,12 +51,22 @@ const Profile = (): JSX.Element => {
       <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
         <h2 className="text-2xl font-bold mb-6 text-center">Profile</h2>
         <div className="mb-4">
-          <p className="text-lg font-semibold">Name:</p>
-          <p className="text-gray-700">{user.name}</p>
+          <label className="text-lg font-semibold">Name:</label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full p-2 border rounded mt-1"
+          />
         </div>
         <div className="mb-4">
-          <p className="text-lg font-semibold">Email:</p>
-          <p className="text-gray-700">{user.email}</p>
+          <label className="text-lg font-semibold">Email:</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full p-2 border rounded mt-1"
+          />
         </div>
         <div className="flex justify-between">
           <button

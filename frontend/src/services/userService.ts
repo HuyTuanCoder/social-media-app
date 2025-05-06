@@ -1,13 +1,13 @@
 import api from './axiosConfig';
 
 const userService = {
-  changeUsername: async (userId: string, newUsername: string) => {
-    const response = await api.put(`/users/${userId}/username`, { username: newUsername });
+  updateUser: async (userId: string, updates: { username?: string; email?: string }) => {
+    const response = await api.put(`/update/${userId}`, updates); // Matches `/update/:id`
     return response.data;
   },
 
-  changeEmail: async (userId: string, newEmail: string) => {
-    const response = await api.put(`/users/${userId}/email`, { email: newEmail });
+  deleteUser: async (userId: string) => {
+    const response = await api.delete(`/delete/${userId}`); // Matches `/delete/:id`
     return response.data;
   },
 };

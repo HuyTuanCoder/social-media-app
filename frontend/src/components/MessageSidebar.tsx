@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import messageService from '../services/messageService';
-import { Chat, Message } from '../types/types';
+import { Chat, Message, User } from '../types/types';
 
 interface MessageSidebarProps {
   userId: string; // Current logged-in user's ID

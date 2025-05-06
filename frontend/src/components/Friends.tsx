@@ -69,7 +69,7 @@ const Friends = (): JSX.Element => {
   
     try {
       // Fetch search results from the backend
-      const results = await friendService.findFriend(searchQuery, userId);
+      const results = await friendService.findFriend(searchQuery);
       
       // Filter out the current user and enhance results to include friendship status
       const enhancedResults = results
