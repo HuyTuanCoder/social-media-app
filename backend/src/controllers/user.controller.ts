@@ -141,23 +141,29 @@ export const getTotalUsers = asyncHandler(async (req: Request, res: Response) =>
   res.json({ totalUsers });
 });
 
+// Search users by username or email
 export const searchUsers = asyncHandler(async (req: Request, res: Response) => {
-  const { pattern } = req.body; // Extract the search pattern from the request body
+  const { query } = req.query; // Extract the query parameter
 
   // Validate input
-  if (!pattern || typeof pattern !== 'string') {
-    return res.status(400).json({ error: 'A valid search pattern is required' });
+  if (!query || typeof query !== 'string') {
+    return res.status(400).json({ error: 'Query parameter is required and must be a string' });
   }
 
-  // Search for users whose username or email matches the pattern
+  // Search for users whose username or email matches the query
   const users = await prisma.user.findMany({
     where: {
       OR: [
-        { username: { contains: pattern } }, // Search for username
-        { email: { contains: pattern } }, // Search for email
+        { username: { contains: query } }, // Case-insensitive search for username
+        { email: { contains: query } },    // Case-insensitive search for email
       ],
+    },
+    select: {
+      id: true,
+      username: true,
+      email: true,
     },
   });
 
-  res.json(users);
+  res.status(200).json(users);
 });

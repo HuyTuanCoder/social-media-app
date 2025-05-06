@@ -1,63 +1,149 @@
-import React, { useState } from 'react';
-import friendService from '../services/friendService'; // Import the friend service
+import React, { useState, useEffect } from 'react';
+import friendService from '../services/friendService';
+import { User } from '../types/types';
 
-// Sample data for demonstration
-const sampleUsers = [
-  { id: 1, name: 'User A', isFriend: false },
-  { id: 2, name: 'User B', isFriend: true },
-  { id: 3, name: 'User C', isFriend: false },
-];
-
-const sampleFriends = [
-  { id: 1, name: 'User D', friendshipDate: '2023-01-01' },
-  { id: 2, name: 'User E', friendshipDate: '2023-02-15' },
-];
+interface FriendUser extends User {
+  friendshipId?: string;
+  friendshipDate?: string;
+  isFriend?: boolean;
+}
 
 const Friends = (): JSX.Element => {
-  const [searchQuery, setSearchQuery] = useState(''); // State for search input
-  const [searchResults, setSearchResults] = useState(sampleUsers); // State for search results
-  const [friends, setFriends] = useState(sampleFriends); // State for current friends
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<FriendUser[]>([]);
+  const [friends, setFriends] = useState<FriendUser[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // Handle search input change
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
+  // Get current user from localStorage
+  const getCurrentUserId = (): string => {
+    const userJSON = localStorage.getItem('loggedUser');
+    if (userJSON) {
+      const user = JSON.parse(userJSON);
+      return user.id;
+    }
+    return '';
+  };
 
-    // Simulate API call to search users
-    const results = sampleUsers.filter((user) =>
-      user.name.toLowerCase().includes(query.toLowerCase())
-    );
-    setSearchResults(results);
+  const userId = getCurrentUserId();
+
+  // Format date for display
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  // Fetch all friends on component mount
+  useEffect(() => {
+    const fetchFriends = async () => {
+      if (!userId) return;
+      
+      try {
+        const response = await friendService.getAllFriends(userId);
+        
+        // Format the friendship date
+        const formattedFriends = response.map((friend: FriendUser) => ({
+          ...friend,
+          friendshipDate: friend.friendshipDate ? formatDate(friend.friendshipDate) : 'Unknown'
+        }));
+        
+        setFriends(formattedFriends);
+      } catch (error) {
+        console.error('Error fetching friends:', error);
+      }
+    };
+
+    fetchFriends();
+  }, [userId]);
+
+  const handleSearchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+  
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+  
+    try {
+      // Fetch search results from the backend
+      const results = await friendService.findFriend(searchQuery, userId);
+      
+      // Filter out the current user and enhance results to include friendship status
+      const enhancedResults = results
+        .filter((user: User) => user.id !== userId) // Remove the current user
+        .map((user: User) => {
+          const existingFriend = friends.find((friend) => friend.id === user.id);
+          return {
+            ...user,
+            isFriend: !!existingFriend, // Check if the user is already a friend
+            friendshipId: existingFriend?.friendshipId, // Include friendshipId if they are friends
+          };
+        });
+  
+      setSearchResults(enhancedResults);
+    } catch (error) {
+      console.error('Error searching for friends:', error);
+    }
   };
 
   // Handle adding a friend
-  const handleAddFriend = async (userId: number) => {
+  const handleAddFriend = async (friendId: string) => {
+    if (!userId) return;
+    
     try {
-      // Simulate API call to add a friend
-      const newFriend = searchResults.find((user) => user.id === userId);
-      if (newFriend) {
-        setFriends([...friends, { id: newFriend.id, name: newFriend.name, friendshipDate: new Date().toISOString().split('T')[0] }]);
-        setSearchResults(
-          searchResults.map((user) =>
-            user.id === userId ? { ...user, isFriend: true } : user
+      const response = await friendService.addFriend(userId, friendId);
+      
+      // Get the friend user from search results
+      const addedFriend = searchResults.find(user => user.id === friendId);
+      
+      if (addedFriend && response.friendship) {
+        // Create a new friend object with friendship info
+        const newFriend: FriendUser = {
+          ...addedFriend,
+          friendshipId: response.friendship.id,
+          friendshipDate: formatDate(response.friendship.createdAt),
+          isFriend: true
+        };
+        
+        // Update friends list
+        setFriends(prevFriends => [...prevFriends, newFriend]);
+        
+        // Update search results to show friendship status
+        setSearchResults(prevResults =>
+          prevResults.map(user =>
+            user.id === friendId
+              ? { ...user, isFriend: true, friendshipId: response.friendship.id }
+              : user
           )
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding friend:', error);
     }
   };
 
   // Handle deleting a friend
-  const handleDeleteFriend = async (userId: number) => {
+  const handleDeleteFriend = async (friendshipId: string) => {
     try {
-      // Simulate API call to delete a friend
-      setFriends(friends.filter((friend) => friend.id !== userId));
-      setSearchResults(
-        searchResults.map((user) =>
-          user.id === userId ? { ...user, isFriend: false } : user
+      await friendService.deleteFriend(friendshipId);
+      
+      // Remove from friends list
+      setFriends(prevFriends => 
+        prevFriends.filter(friend => friend.friendshipId !== friendshipId)
+      );
+      
+      // Update search results if friend is in search results
+      setSearchResults(prevResults =>
+        prevResults.map(user =>
+          user.friendshipId === friendshipId
+            ? { ...user, isFriend: false, friendshipId: undefined }
+            : user
         )
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting friend:', error);
     }
   };
@@ -67,23 +153,38 @@ const Friends = (): JSX.Element => {
       {/* Left Side: Search and Add/Delete Friends */}
       <div className="w-1/2 h-full p-4 border-r overflow-y-auto">
         <h2 className="text-lg font-bold mb-4">Find Friends</h2>
-        <input
-          type="text"
-          placeholder="Search for users..."
-          value={searchQuery}
-          onChange={(e) => handleSearch(e.target.value)}
-          className="w-full p-2 mb-4 border rounded"
-        />
+        
+        {/* Search form with onSubmit event */}
+        <form onSubmit={handleSearchSubmit} className="mb-4">
+          <div className="flex">
+            <input
+              type="text"
+              placeholder="Search for users..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 p-2 border rounded-l"
+            />
+            <button 
+              type="submit"
+              className="bg-blue-500 text-white px-4 py-2 rounded-r hover:bg-blue-600"
+            >
+              Search
+            </button>
+          </div>
+        </form>
+        
+        {error && <p className="text-red-500 mb-4">{error}</p>}
+        
         <ul>
           {searchResults.map((user) => (
             <li
               key={user.id}
               className="p-2 mb-2 bg-white rounded shadow flex justify-between items-center"
             >
-              <span>{user.name}</span>
+              <span>{user.username}</span>
               {user.isFriend ? (
                 <button
-                  onClick={() => handleDeleteFriend(user.id)}
+                  onClick={() => handleDeleteFriend(user.friendshipId!)}
                   className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
                 >
                   Delete
@@ -106,6 +207,7 @@ const Friends = (): JSX.Element => {
         <h2 className="text-lg font-bold mb-4">
           Your Friends ({friends.length})
         </h2>
+        {friends.length === 0 && <p className="text-gray-500">You don't have any friends yet</p>}
         <ul>
           {friends.map((friend) => (
             <li
@@ -113,13 +215,13 @@ const Friends = (): JSX.Element => {
               className="p-2 mb-2 bg-white rounded shadow flex justify-between items-center"
             >
               <div>
-                <p>{friend.name}</p>
+                <p>{friend.username}</p>
                 <p className="text-sm text-gray-500">
                   Friends since: {friend.friendshipDate}
                 </p>
               </div>
               <button
-                onClick={() => handleDeleteFriend(friend.id)}
+                onClick={() => handleDeleteFriend(friend.friendshipId!)}
                 className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
               >
                 Delete

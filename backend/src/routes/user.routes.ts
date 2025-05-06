@@ -5,7 +5,7 @@ import {
   deleteUser,
   updateUser,
   getTotalUsers,
-  searchUsers
+  searchUsers,
 } from '../controllers/user.controller';
 
 const userRoutes = Router();
