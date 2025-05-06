@@ -1,0 +1,15 @@
+DELIMITER //
+
+CREATE PROCEDURE GetMostMessagedUser(IN userId VARCHAR(255), OUT mostMessagedUser VARCHAR(255))
+BEGIN
+    SELECT u.username INTO mostMessagedUser
+    FROM Message m
+    JOIN Chat c ON m.chatId = c.id
+    JOIN User u ON (u.id = c.userAId OR u.id = c.userBId) AND u.id != userId
+    WHERE m.senderId = userId
+    GROUP BY u.id
+    ORDER BY COUNT(*) DESC
+    LIMIT 1;
+END //
+
+DELIMITER ;

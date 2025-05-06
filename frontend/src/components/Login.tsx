@@ -81,7 +81,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp }) => {
               className="w-full p-2 mb-4 border rounded"
             />
             <input
-              type="email"
+              type="text"
               placeholder="Enter email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

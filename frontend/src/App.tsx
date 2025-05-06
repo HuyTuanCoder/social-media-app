@@ -122,7 +122,16 @@ const App = (): JSX.Element => {
                   )
                 }
               />
-              <Route path="/report" element={<Report />} />
+              <Route
+                path="/report"
+                element={
+                  currentUser ? (
+                    <Report userId={currentUser.id} />
+                  ) : (
+                    <Navigate to="/messages" />
+                  )
+                }
+              />
               <Route path="*" element={<Navigate to="/messages" />} />
             </Routes>
           </div>

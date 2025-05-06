@@ -1,8 +1,9 @@
-DROP PROCEDURE IF EXISTS GetTotalUsers;
-
 DELIMITER //
-CREATE PROCEDURE GetTotalUsers()
+
+CREATE PROCEDURE GetTotalUsers(OUT totalUsers INT)
 BEGIN
-    SELECT CAST(COUNT(*) AS SIGNED) AS totalUsers FROM `User`;
+    SELECT COUNT(*) INTO totalUsers
+    FROM User;
 END //
+
 DELIMITER ;

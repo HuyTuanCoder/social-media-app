@@ -30,15 +30,32 @@ export const createFriendship = asyncHandler(async (req: Request, res: Response)
     return res.status(400).json({ error: 'Friendship already exists' });
   }
 
-  // Create a friendship record
-  const friendship = await prisma.friendship.create({
-    data: {
-      userAId,
-      userBId,
-    },
+  // Create a friendship and chat record in a single transaction
+  const result = await prisma.$transaction(async (prisma) => {
+    // Create the friendship
+    const friendship = await prisma.friendship.create({
+      data: {
+        userAId,
+        userBId,
+      },
+    });
+
+    // Create the chat relation
+    const chat = await prisma.chat.create({
+      data: {
+        userAId,
+        userBId,
+      },
+    });
+
+    return { friendship, chat };
   });
 
-  res.status(201).json({ message: 'Friendship created successfully', friendship });
+  res.status(201).json({
+    message: 'Friendship and chat created successfully',
+    friendship: result.friendship,
+    chat: result.chat,
+  });
 });
 
 // Delete a friendship by friendship ID

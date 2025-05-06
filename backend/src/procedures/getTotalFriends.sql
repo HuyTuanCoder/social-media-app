@@ -1,8 +1,8 @@
 DELIMITER //
 
-CREATE PROCEDURE CountFriends(IN userId VARCHAR(255))
+CREATE PROCEDURE GetTotalFriends(IN userId VARCHAR(255), OUT totalFriends INT)
 BEGIN
-    SELECT COUNT(*) AS totalFriends
+    SELECT COUNT(*) INTO totalFriends
     FROM Friendship
     WHERE userAId = userId OR userBId = userId;
 END //
